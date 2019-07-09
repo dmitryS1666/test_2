@@ -14,10 +14,10 @@ begin
 
   puts "There are #{n_rows} rows in the result set"
 
-  n_rows.times do
+  rs.each do |row|
     data = row["candidate_office_name"]
 
-    #transform: anything after a slash
+    #transform: Highway and Township
     case data
     when /[H|h]wy|[H|h]ighway/
       data.gsub!(/[H|h]wy|[H|h]ighway/, "Highway")
@@ -25,21 +25,47 @@ begin
       data.gsub!(/[T|t]wp/, "Township")
     end
 
+    if !data.match(/\//) && !data.match(/,/)
+      data.downcase!
+    end
+
     #transform: anything after a slash
-    if data.match /\//
+    if data.match(/\//) && !data.match(/,/)
       data_a = data.split('/')
-      data = data_a.last.capitalize + ' ' + data.gsub!(data_a.last, '').downcase
-      data.gsub!(/\//, '')
+      if data_a.size > 1
+        data = data_a.last.to_s + ' ' + data.gsub!('/'+data_a.last, '').to_s.downcase!
+        data.gsub!(/\//, ' and ')
+      else
+        data.gsub!('/', '').to_s.downcase!
+      end
     end
 
     #transform: anything after comma
-    if data.match(/,/)
+    if data.match(/,/) && !data.match(/\//)
       data_a = data.split(',')
       data = data_a.first + " (#{data.gsub!(data_a.first, '').gsub!(', ', '')})"
     end
 
+    #transform: anything if contains comma and slash
+    if data.match(/,/) && data.match(/\//)
+      data_a = data.split('/')
+      data = data_a.last + ' ' + data.gsub!('/'+data_a.last, '')
+      data_a = data.split(',')
+      data = data_a.first + " (#{data.gsub!(data_a.first, '').gsub!(', ', '')})"
+    end
+
+    #transform: delete string duplicates
+    data_a = data.split(' ')
+    data_a.each_with_index do |str, index|
+      if str.to_s.casecmp(data_a[index+1].to_s) == 0
+        data_a.delete_at(index+1)
+        break
+      end
+    end
+    data = data_a.join(' ')
+
     #transform: whats stays in parentheses
-    #put  and save
+    #put and save
     up_con = con.prepare "UPDATE hle_dev_test_dmitry_suschinsky SET clean_name = ?, sentence = ? WHERE id = ?"
     up_con.execute data, "The candidate is running for the #{data}", row["id"]
 
