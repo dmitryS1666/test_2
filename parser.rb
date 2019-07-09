@@ -13,12 +13,20 @@ begin
   n_rows = rs.count
 
   puts "There are #{n_rows} rows in the result set"
+  puts Time.now
 
   rs.each do |row|
     data = row["candidate_office_name"]
 
-    #transform: Highway and Township
+    #transform: Highway and Township and '.'
+    if data.match(/\./)
+      data.gsub!('.', '')
+    end
+
     case data
+    when /[H|h]wy|[H|h]ighway/ && /[T|t]wp/
+      data.gsub!(/[H|h]wy|[H|h]ighway/, "Highway")
+      data.gsub!(/[T|t]wp/, "Township")
     when /[H|h]wy|[H|h]ighway/
       data.gsub!(/[H|h]wy|[H|h]ighway/, "Highway")
     when /[T|t]wp/
@@ -70,6 +78,7 @@ begin
     up_con.execute data, "The candidate is running for the #{data}", row["id"]
 
   end
+  puts "Done #{Time.now}"
 
 rescue Mysql2::Error => e
   puts e.errno
